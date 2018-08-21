@@ -192,6 +192,23 @@
       - 'PR_{repo_name}-{series}-{image}-{scenario}-{action}'
 
 - project:
+    name: "rpc-openstack-pike-tox-postmerge"
+    repo_name: "rpc-openstack"
+    repo_url: "https://github.com/rcbops/rpc-openstack"
+    series: "pike"
+    branch: "pike"
+    jira_project_key: "SAN"
+    image:
+      - container:
+          SLAVE_TYPE: "container"
+    scenario:
+      - "bashate"
+    action:
+      - "tox-test"
+    jobs:
+      - 'PM_{repo_name}-{series}-{image}-{scenario}-{action}'
+
+- project:
     name: "rpc-openstack-newton-premerge"
     repo_name: "rpc-openstack"
     repo_url: "https://github.com/rcbops/rpc-openstack"
