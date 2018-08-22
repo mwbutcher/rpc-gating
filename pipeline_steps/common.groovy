@@ -493,7 +493,7 @@ def prepareRpcGit(String branch = "auto", String dest = "/opt"){
 // compatibility with the jenkins git scm step.
 // Note: Creds are not supplied for https connections
 // If you need autheniticated access, use ssh:// or git@
-void clone_with_pr_refs(
+String clone_with_pr_refs(
   String directory='./',
   String repo="git@github.com:${env.ghprbGhRepository}",
   String ref="origin/pr/${env.ghprbPullId}/merge",
@@ -511,15 +511,17 @@ void clone_with_pr_refs(
       "ref not supplied to common.clone_with_pr_refs or env.ghprbPullID not "\
       + "set, attempting to checkout PR for a periodic build?")
   }
+  String sha
   if (is_internal_repo_id(repo)) {
-    clone_internal_repo(directory, repo, ref, refspec)
+    sha = clone_internal_repo(directory, repo, ref, refspec)
   } else {
-    clone_external_repo(directory, repo, ref, refspec)
+    sha = clone_external_repo(directory, repo, ref, refspec)
   }
+  return sha
 }
 
 
-void clone_repo(String directory, String ssh_key, String repo, String ref, String refspec) {
+String clone_repo(String directory, String ssh_key, String repo, String ref, String refspec) {
   print "Cloning Repo: ${repo}@${ref}"
   sshagent (credentials:[ssh_key]){
     sh """#!/bin/bash -xe
@@ -537,6 +539,8 @@ void clone_repo(String directory, String ssh_key, String repo, String ref, Strin
       git submodule update --init
     """
   }
+  String sha = sh(script: "cd ${directory}; git rev-parse --verify HEAD", returnStdout: true).trim()
+  return sha
 }
 
 
@@ -545,7 +549,7 @@ Boolean is_internal_repo_id(String repo_url) {
 }
 
 
-void clone_internal_repo(String directory, String internal_repo, String ref, String refspec) {
+String clone_internal_repo(String directory, String internal_repo, String ref, String refspec) {
   repo_secret_id = internal_repo.split(":", 2)[1]
   repo_creds = [
     string(
@@ -554,9 +558,10 @@ void clone_internal_repo(String directory, String internal_repo, String ref, Str
     ),
   ]
 
+  String sha
   internal_slave() {
     withCredentials(repo_creds) {
-      clone_repo(directory, "rpc-jenkins-svc-github-key", env.INTERNAL_REPO_URL, ref, refspec)
+      sha = clone_repo(directory, "rpc-jenkins-svc-github-key", env.INTERNAL_REPO_URL, ref, refspec)
     }
 
     if (directory.endsWith("/")) {
@@ -568,10 +573,11 @@ void clone_internal_repo(String directory, String internal_repo, String ref, Str
     stash includes: directory_pattern, name: "repo-clone"
   }
   unstash "repo-clone"
+  return sha
 }
 
 
-void clone_external_repo(String directory, String repo, String ref, String refspec) {
+String clone_external_repo(String directory, String repo, String ref, String refspec) {
     clone_repo(directory, "rpc-jenkins-svc-github-ssh-key", repo, ref, refspec)
 }
 
@@ -1454,8 +1460,9 @@ void stdJob(String hook_dir, String credentials, String jira_project_key, String
           withRequestedCredentials(credentials) {
 
             stage('Checkout') {
+              String commit
               if (env.ghprbPullId == null) {
-                clone_with_pr_refs(
+                commit = clone_with_pr_refs(
                   "${env.WORKSPACE}/${env.RE_JOB_REPO_NAME}",
                   env.REPO_URL,
                   env.BRANCH,
@@ -1466,17 +1473,15 @@ void stdJob(String hook_dir, String credentials, String jira_project_key, String
                 }
               } else {
                 print("Triggered by PR: ${env.ghprbPullLink}")
-                clone_with_pr_refs(
+                commit = clone_with_pr_refs(
                   "${env.WORKSPACE}/${env.RE_JOB_REPO_NAME}",
                 )
               }
-              dir("${env.WORKSPACE}/${env.RE_JOB_REPO_NAME}"){
-                updateStringParam(
-                  "_BUILD_SHA",
-                  sh(script: "git rev-parse --verify HEAD", returnStdout: true).trim(),
-                  "The SHA tested by this build."
-                )
-              }
+              updateStringParam(
+                "_BUILD_SHA",
+                commit,
+                "The SHA tested by this build."
+              )
             }
 
             found_hook_dir = findHookDir(hook_dir)
