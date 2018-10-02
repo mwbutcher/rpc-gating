@@ -379,6 +379,12 @@ def archive_artifacts(Map args = [:]){
         buildArtifacts = ["artifacts": []]
       }
       println "Uploaded artefact details:\n${buildArtifacts}"
+      buildArtifacts.artifacts.each {k, v ->
+        // rpc-gating is skipped because it is not a component and so that unit tests can continue
+        if (k == "file" && v.container_name != "rpc-gating"){
+          addArtifactTypeToComponent(v.container_name, v.name, k, v.public_url, "RE")
+        }
+      }
       if(buildArtifacts.artifacts){
         currentBuild.description = buildArtifacts.artifacts.collect{_, v ->
           "<h2><a href='${v.public_url}'>${v.title}</a></h2>"
@@ -401,6 +407,57 @@ def archive_artifacts(Map args = [:]){
       }
     }// try
   } // stage
+}
+
+void addArtifactTypeToComponent(String componentName, String artifactStoreName, String artifactType, String url, String jiraProjectKey){
+  String venv = "${WORKSPACE}/.componentvenv"
+  sh """#!/bin/bash -xe
+      virtualenv --python python3 ${venv}
+      set +x; . ${venv}/bin/activate; set -x
+      pip install -c '${env.WORKSPACE}/rpc-gating/constraints_rpc_component.txt' rpc_component
+  """
+
+  String releasesDir = "${WORKSPACE}/releases"
+
+  dir(releasesDir) {
+    git branch: 'master', url: 'https://github.com/rcbops/releases'
+
+    withEnv(
+      [
+        "ISSUE_SUMMARY=Add artefact container public URL to releases for ${componentName}",
+        "ISSUE_DESCRIPTION=This issue was generated automatically when artefacts were uploaded to a new container.",
+        "LABELS=component-artifacts jenkins",
+        "JIRA_PROJECT_KEY=${jiraProjectKey}",
+        "TARGET_BRANCH=master",
+        "COMMIT_TITLE=Update ${componentName} with new artifact store ${artifactStoreName}",
+        "COMMIT_MESSAGE=This change adds a new artifact store to the component definition.",
+      ]
+    ){
+      withCredentials(
+        [
+          string(
+            credentialsId: 'rpc-jenkins-svc-github-pat',
+            variable: 'PAT'
+          ),
+          usernamePassword(
+            credentialsId: "jira_user_pass",
+            usernameVariable: "JIRA_USER",
+            passwordVariable: "JIRA_PASS"
+          ),
+        ]
+      ){
+        sshagent (credentials:['rpc-jenkins-svc-github-ssh-key']){
+          sh """#!/bin/bash -xe
+            set +x; . ${venv}/bin/activate; set -x
+            component --releases-dir . artifact-store --component-name ${componentName} add --name ${artifactStoreName} --type ${artifactType} --public-url ${url}
+            git status
+            git diff
+            ${WORKSPACE}/rpc-gating/scripts/commit_and_pull_request.sh
+          """
+        }
+      }
+    }
+  }
 }
 
 List get_cloud_creds(){
