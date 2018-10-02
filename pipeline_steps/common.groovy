@@ -398,7 +398,7 @@ def archive_artifacts(Map args = [:]){
       try {
         print "Error while archiving artifacts, swallowing this exception to prevent "\
               +"archive errors from failing the build: ${e}"
-        create_jira_issue("RE",
+        create_jira_issue("SAN",
                           "Artifact Archival Failure: ${env.BUILD_TAG}",
                           "[${env.BUILD_TAG}|${env.BUILD_URL}]",
                           ["jenkins", "artifact_archive_fail"])
