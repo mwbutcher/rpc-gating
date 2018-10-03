@@ -109,6 +109,8 @@
       set_fact:
         new_build_artifacts: "{{ {'artifacts': {'file': {'name': 'release-artifacts', 'container_name': '{{ object_store_container_name }}', 'public_url': '{{ container_public_url }}/{{ artifact_basename }}/', 'title': 'Build file artifacts'}}} }}"
 
+    - debug: var=build_artifacts
+    - debug: var=test_foo
     - name: "Update published artefacts file"
       copy:
         content: "{{ existing_build_artifacts | default({}) | combine(new_build_artifacts, recursive=True) | to_nice_yaml }}"
