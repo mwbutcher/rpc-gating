@@ -15,7 +15,7 @@ void download_venv(){
     REPO_BASE="https://rpc-repo.rackspace.com/rpcgating/venvs"
     cd ${env.WORKSPACE}
     pushd rpc-gating
-      SHA=\$(git rev-parse HEAD)
+      SHA=4503b71c1d157af8f8f416d9b7582a4e353b960f
     popd
     curl --fail -s "\${REPO_BASE}/rpcgatingvenv_\${SHA}.tbz" > venv.tbz
   """
