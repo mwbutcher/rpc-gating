@@ -419,42 +419,41 @@ void addArtifactTypeToComponent(String componentName, String artifactStoreName, 
 
   String releasesDir = "${WORKSPACE}/releases"
 
-  dir(releasesDir) {
-    git branch: 'master', url: 'https://github.com/rcbops/releases'
+  clone_with_pr_refs("${releasesDir}", "https://github.com/rcbops/releases", "master")
 
-    withEnv(
+  withEnv(
+    [
+      "ISSUE_SUMMARY=Add artefact container public URL to releases for ${componentName}",
+      "ISSUE_DESCRIPTION=This issue was generated automatically when artefacts were uploaded to a new container.",
+      "LABELS=component-artifacts jenkins",
+      "JIRA_PROJECT_KEY=${jiraProjectKey}",
+      "TARGET_BRANCH=master",
+      "COMMIT_TITLE=Update ${componentName} with new artifact store ${artifactStoreName}",
+      "COMMIT_MESSAGE=This change adds a new artifact store to the component definition.",
+    ]
+  ){
+    withCredentials(
       [
-        "ISSUE_SUMMARY=Add artefact container public URL to releases for ${componentName}",
-        "ISSUE_DESCRIPTION=This issue was generated automatically when artefacts were uploaded to a new container.",
-        "LABELS=component-artifacts jenkins",
-        "JIRA_PROJECT_KEY=${jiraProjectKey}",
-        "TARGET_BRANCH=master",
-        "COMMIT_TITLE=Update ${componentName} with new artifact store ${artifactStoreName}",
-        "COMMIT_MESSAGE=This change adds a new artifact store to the component definition.",
+        string(
+          credentialsId: 'rpc-jenkins-svc-github-pat',
+          variable: 'PAT'
+        ),
+        usernamePassword(
+          credentialsId: "jira_user_pass",
+          usernameVariable: "JIRA_USER",
+          passwordVariable: "JIRA_PASS"
+        ),
       ]
     ){
-      withCredentials(
-        [
-          string(
-            credentialsId: 'rpc-jenkins-svc-github-pat',
-            variable: 'PAT'
-          ),
-          usernamePassword(
-            credentialsId: "jira_user_pass",
-            usernameVariable: "JIRA_USER",
-            passwordVariable: "JIRA_PASS"
-          ),
-        ]
-      ){
-        sshagent (credentials:['rpc-jenkins-svc-github-ssh-key']){
-          sh """#!/bin/bash -xe
-            set +x; . ${venv}/bin/activate; set -x
-            component --releases-dir . artifact-store --component-name ${componentName} add --name ${artifactStoreName} --type ${artifactType} --public-url ${url}
-            git status
-            git diff
-            ${WORKSPACE}/rpc-gating/scripts/commit_and_pull_request.sh
-          """
-        }
+      sshagent (credentials:['rpc-jenkins-svc-github-ssh-key']){
+        sh """#!/bin/bash -xe
+          cd ${releasesDir}
+          set +x; . ${venv}/bin/activate; set -x
+          component --releases-dir . artifact-store --component-name ${componentName} add --name ${artifactStoreName} --type ${artifactType} --public-url ${url}
+          git status
+          git diff
+          ${WORKSPACE}/rpc-gating/scripts/commit_and_pull_request.sh
+        """
       }
     }
   }
