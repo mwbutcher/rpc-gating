@@ -410,10 +410,11 @@ def archive_artifacts(Map args = [:]){
 }
 
 void addArtifactTypeToComponent(String componentName, String artifactStoreName, String artifactType, String url, String jiraProjectKey){
-  String venv = "${WORKSPACE}/.componentvenv"
+  String gatingVenv = "${WORKSPACE}/.venv"
+  String componentVenv = "${WORKSPACE}/.componentvenv"
   sh """#!/bin/bash -xe
-      virtualenv --python python3 ${venv}
-      set +x; . ${venv}/bin/activate; set -x
+      virtualenv --python python3 ${componentVenv}
+      set +x; . ${componentVenv}/bin/activate; set -x
       pip install -c '${env.WORKSPACE}/rpc-gating/constraints_rpc_component.txt' rpc_component
   """
 
@@ -448,8 +449,10 @@ void addArtifactTypeToComponent(String componentName, String artifactStoreName, 
       sshagent (credentials:['rpc-jenkins-svc-github-ssh-key']){
         sh """#!/bin/bash -xe
           cd ${releasesDir}
-          set +x; . ${venv}/bin/activate; set -x
+          set +x; . ${componentVenv}/bin/activate; set -x
           component --releases-dir . artifact-store --component-name ${componentName} add --name ${artifactStoreName} --type ${artifactType} --public-url ${url}
+          deactivate
+          set +x; . ${gatingVenv}/bin/activate; set -x
           git status
           git diff
           ${WORKSPACE}/rpc-gating/scripts/commit_and_pull_request.sh
