@@ -382,7 +382,7 @@ def archive_artifacts(Map args = [:]){
       buildArtifacts.artifacts.each {k, v ->
         // rpc-gating is skipped because it is not a component and so that unit tests can continue
         if (k == "file" && v.container_name != "rpc-gating"){
-          addArtifactTypeToComponent(v.container_name, v.name, k, v.public_url, "RE")
+          addArtifactTypeToComponent(v.container_name, v.name, k, v.public_url, "SAN")
         }
       }
       if(buildArtifacts.artifacts){
