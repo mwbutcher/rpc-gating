@@ -450,7 +450,15 @@ void addArtifactTypeToComponent(String componentName, String artifactStoreName, 
         sh """#!/bin/bash -xe
           cd ${releasesDir}
           set +x; . ${componentVenv}/bin/activate; set -x
-          component --releases-dir . artifact-store --component-name ${componentName} add --name ${artifactStoreName} --type ${artifactType} --public-url ${url}
+          component \
+            --no-commit-changes \
+            --releases-dir . \
+            artifact-store \
+              --component-name ${componentName} \
+              add \
+                --name ${artifactStoreName} \
+                --type ${artifactType} \
+                --public-url ${url}
           deactivate
           set +x; . ${gatingVenv}/bin/activate; set -x
           git status
