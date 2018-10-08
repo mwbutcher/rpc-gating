@@ -419,7 +419,7 @@ void addArtifactTypeToComponent(String componentName, String artifactStoreName, 
 
   String releasesDir = "${WORKSPACE}/releases"
 
-  clone_with_pr_refs("${releasesDir}", "https://github.com/rcbops/releases", "master")
+  clone_with_pr_refs("${releasesDir}", "https://github.com/git-harry/releases", "master")
 
   withEnv(
     [
