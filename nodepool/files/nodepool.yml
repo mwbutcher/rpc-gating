@@ -113,6 +113,11 @@ providers:
         availability-zones: []
         labels: &provider_pools_main_labels_block
           #MaaS
+          - name: maas-ubuntu-bionic-g1-8
+            diskimage: ubuntu-bionic
+            flavor-name: general1-8
+            key-name: jenkins
+            console-log: true
           - name: maas-ubuntu-xenial-g1-8
             diskimage: ubuntu-xenial
             flavor-name: general1-8
